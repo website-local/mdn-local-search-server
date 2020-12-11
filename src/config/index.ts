@@ -1,7 +1,9 @@
-const path = require('path');
+import {isAbsolute, resolve} from 'path';
+import {cpus} from 'os';
+import {alias} from 'yargs';
+import {SearchConfig} from './types';
 
-/** @type {Partial<SearchConfig>} */
-const defaultConfig = {
+const defaultConfig: Partial<SearchConfig> = {
   port: 3000,
   logPath: process.cwd(),
   maxSearchStringLength: 63,
@@ -16,15 +18,29 @@ const defaultConfig = {
     nextPage: '下一页',
     openSearch: '打开搜索',
     closeSearch: '关闭搜索',
+    noResult: '未找到匹配的文档。',
     meta: [
       '在 ',
       ' 版本中找到 ',
       ' 篇关于“',
-      '”的文档。 已显示结果 ',
+      '”的文档。',
+      '已显示结果 ',
       ' 至 ',
       '。'
-    ]
+    ],
   },
+  notFoundHtml: '<main id="content" role="main">' +
+    '<div class="center clear">' +
+    '<section id="content">' +
+    '  <div class="wrap">' +
+    '  <section id="content-main" class="full" role="main">' +
+    '    <h1>找不到页面</h1>' +
+    '    <p>很抱歉，我们找不到您要找的东西。</p>' +
+    '  </section>' +
+    '</div>' +
+    '</section>' +
+    '</div>' +
+    '</main>',
   esIndexSetting: {
     max_ngram_diff: 18,
     analysis: {
@@ -99,38 +115,35 @@ const defaultConfig = {
   }
 };
 
-const required = (config, field) => {
+const required = (config: Partial<SearchConfig>, field: keyof SearchConfig) => {
   if (!config[field]) {
     throw new TypeError(field + ' is required');
   }
 };
 
-/**
- * @param {Partial<SearchConfig>} config
- * @return SearchConfig
- */
-const resolveConfig = (config) => {
+export const resolveConfig = (config: Partial<SearchConfig>): SearchConfig => {
   if (!config) throw new TypeError('config is required');
   required(config, 'rootDir');
   required(config, 'esIndex');
   required(config, 'elasticsearch');
   required(config, 'locale');
-  return Object.assign({}, defaultConfig, config);
+  if (!config.workersForBuildingIndex || config.workersForBuildingIndex < 0) {
+    config.workersForBuildingIndex = Math.max(1, cpus().length >> 1);
+  }
+  return Object.assign({}, defaultConfig, config) as SearchConfig;
 };
 
-module.exports = resolveConfig;
 
-module.exports.resolveArgv = () => {
-  const {argv} = require('yargs')
-    .alias('c', 'config')
+export const resolveArgv = (): SearchConfig => {
+  const {argv} = alias('c', 'config')
     .demand('config', true);
-  /** @type {string | string[]} */
-  let config = argv.config;
+  let config: string | string[] = argv.config as string | string[];
   if (Array.isArray(config)) {
     // probably try every possibly config
     config = config[0];
   }
 
-  return resolveConfig(require(
-    path.isAbsolute(config) ? config : path.resolve(process.cwd(), config)));
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  return resolveConfig(require(isAbsolute(config as string) ?
+    config : resolve(process.cwd(), config)));
 };

@@ -1,13 +1,20 @@
-const glob = require('fast-glob');
-const worker = require('worker_threads');
-const log4js = require('log4js');
-const path = require('path');
-const es = require('@elastic/elasticsearch');
-const configureLogger = (dir) => log4js.configure({
+import {join} from 'path';
+import {isMainThread, Worker} from 'worker_threads';
+import {cpus} from 'os';
+// noinspection ES6PreferShortImport
+import {ElasticSearchClient, SearchConfig} from '../config/types';
+import {BuildIndexWorkerMessage} from './types';
+import {stream as glob} from 'fast-glob';
+import {configure, getLogger}  from 'log4js';
+import {Client} from '@elastic/elasticsearch';
+
+export const configureLogger = (
+  dir: string
+): ReturnType<typeof configure> => configure({
   appenders: {
     'file': {
       type: 'file',
-      filename: path.join(dir, 'build-index.log')
+      filename: join(dir, 'build-index.log')
     },
     'stderr': {
       type: 'stderr'
@@ -34,9 +41,9 @@ const configureLogger = (dir) => log4js.configure({
 });
 
 const logger = {
-  empty: log4js.getLogger('empty'),
-  success: log4js.getLogger('success'),
-  error: log4js.getLogger('error'),
+  empty: getLogger('empty'),
+  success: getLogger('success'),
+  error: getLogger('error'),
 };
 
 /**
@@ -44,8 +51,8 @@ const logger = {
  * @param {ElasticSearchClient} client
  * @return {Promise<void>}
  */
-const configIndex = async (config, client) => {
-  let ret = await client.indices.exists({
+const configIndex = async (config: SearchConfig, client: ElasticSearchClient) => {
+  const ret = await client.indices.exists({
     index: config.esIndex
   });
   if (!ret.body && (config.esIndexSetting || config.esIndexMapping)) {
@@ -73,18 +80,13 @@ const configIndex = async (config, client) => {
   }
 };
 
-/**
- * @param {SearchConfig} config
- * @return {Promise<void>}
- */
-module.exports = async (config) => {
-  if (!worker.isMainThread) {
+export const buildIndex = async (config: SearchConfig): Promise<void> => {
+  if (!isMainThread) {
     throw new TypeError('main script running in worker thread');
   }
 
-  let entryCount = 0, completed = false, resolve;
-  /** @type Worker[] */
-  let workers = [];
+  let entryCount = 0, completed = false, resolve: () => void;
+  const workers: Worker[] = [];
   const end = () => {
     workers.forEach(w => w.terminate());
     if (resolve) {
@@ -94,14 +96,14 @@ module.exports = async (config) => {
   const initWorker = () => {
     let c = config.workersForBuildingIndex;
     if (!c) {
-      c = require('os').cpus().length - 1;
+      c = cpus().length - 1;
     }
     let w;
     for (let i = 0; i < c; i++) {
-      workers.push(w = new worker.Worker(path.join(__dirname, 'build-index-worker.js'), {
+      workers.push(w = new Worker(join(__dirname, 'build-index-worker.js'), {
         workerData: config
       }));
-      w.on('message', (msg) => {
+      w.on('message', (msg: BuildIndexWorkerMessage) => {
         if (msg.status === 'error') {
           logger.error.error(msg.entry, msg.error, msg.error.body);
         } else {
@@ -118,11 +120,12 @@ module.exports = async (config) => {
   };
 
   const buildIndex = async () => {
-    let stream = glob.stream(config.locale + '/docs/**/*.html', {
+    const stream = glob(config.locale + '/docs/**/*.html', {
       cwd: config.rootDir,
       absolute: false
     });
-    let currentWorker = 0, maxWorkers = workers.length;
+    let currentWorker = 0;
+    const maxWorkers = workers.length;
     for await (const entry of stream) {
       workers[currentWorker++].postMessage(entry);
       if (currentWorker >= maxWorkers) {
@@ -132,11 +135,11 @@ module.exports = async (config) => {
     }
     completed = true;
   };
-  const client = new es.Client(config.elasticsearch);
+  const client = new Client(config.elasticsearch);
 
   configureLogger(config.logPath);
   initWorker();
   await configIndex(config, client);
   await buildIndex();
-  return new Promise(r => resolve = r);
+  return new Promise<void>(r => resolve = r);
 };

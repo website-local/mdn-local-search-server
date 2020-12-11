@@ -16,3 +16,5 @@ eslint.cmd
 /mkdirp.cmd
 /mkdirp
 *.log
+lib
+out

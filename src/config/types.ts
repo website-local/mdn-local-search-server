@@ -1,4 +1,5 @@
 import {Client, ClientOptions} from '@elastic/elasticsearch';
+import {userFriendly404Page} from '..';
 
 export type ElasticSearchClient = Client;
 
@@ -32,6 +33,7 @@ export interface SearchConfig {
     notFound: string;
     notFoundFallback: string;
   };
+  enableUserFriendly404Page?: boolean;
   notFoundHtml: string;
   notFoundSearchTimeout?: number;
 

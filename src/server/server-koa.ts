@@ -55,6 +55,26 @@ export const searchServer = (
   ctx.body = buffer.toBuffer();
 };
 
+export const userFriendly404Page = (
+  config: SearchConfig,
+  t: MdnSearchTemplate,
+  client: Client
+) : Koa.Middleware => async (ctx, next) => {
+  await next();
+  if (ctx.status === 404 && !ctx.body) {
+    const sb = new StringBuffer();
+    if (ctx.path.startsWith('/@api') ||
+      ctx.path.startsWith('/files')) {
+      render404Page(sb, config, t, ctx.path);
+    } else {
+      const searchResult = await search404Fallback(client, config, ctx.path);
+      render404Page(sb, config, t, ctx.path, searchResult);
+    }
+    ctx.type = 'html';
+    ctx.body = sb.toBuffer();
+  }
+};
+
 export default async function (config: SearchConfig): Promise<Koa> {
   const app = new Koa();
   const client = new Client(config.elasticsearch);
@@ -72,22 +92,10 @@ export default async function (config: SearchConfig): Promise<Koa> {
     ]
   }));
 
-  // handle 404 not found
-  app.use(async (ctx, next) => {
-    await next();
-    if (ctx.status === 404 && !ctx.body) {
-      const sb = new StringBuffer();
-      if (ctx.path.startsWith('/@api') ||
-        ctx.path.startsWith('/files')) {
-        render404Page(sb, config, t, ctx.path);
-      } else {
-        const searchResult = await search404Fallback(client, config, ctx.path);
-        render404Page(sb, config, t, ctx.path, searchResult);
-      }
-      ctx.type = 'html';
-      ctx.body = sb.toBuffer();
-    }
-  });
+  if (config.enableUserFriendly404Page) {
+    // handle 404 not found
+    app.use(userFriendly404Page(config, t, client));
+  }
 
   app.listen(config.port, () =>
     console.log('server started on port', config.port));

@@ -143,6 +143,9 @@ export const resolveConfig = (config: Partial<SearchConfig>): SearchConfig => {
   if (!config.workersForBuildingIndex || config.workersForBuildingIndex < 0) {
     config.workersForBuildingIndex = Math.max(1, cpus().length >> 1);
   }
+  if (!('enableUserFriendly404Page' in config)) {
+    config.enableUserFriendly404Page = true;
+  }
   return Object.assign({}, defaultConfig, config) as SearchConfig;
 };
 

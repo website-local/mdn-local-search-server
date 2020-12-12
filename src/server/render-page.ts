@@ -7,7 +7,7 @@ import {
 import {SearchConfig} from '../config/types';
 // noinspection ES6PreferShortImport
 import {MdnIndexData} from '../build-index/types';
-import {escapeHtml, Writable} from '../utils';
+import {countChar, escapeHtml, Writable} from '../utils';
 
 export const renderHeader = (
   target: Writable,
@@ -123,7 +123,8 @@ export const renderSearch = (
       params.searchString
     }" id="search-result-previous">${config.text.previousPage}</a>`);
   }
-  if (count.value > endCount) {
+  if (count.value > endCount &&
+    (!config.maxPageNumber || params.page < config.maxPageNumber)) {
     stream.push(` <a class="button" href="?page=${params.page + 1}&amp;q=${
       params.searchString
     }" id="search-result-next">${config.text.nextPage}</a>`);
@@ -149,4 +150,64 @@ export const renderPage = (
   renderBody(target, templateData, params);
   renderSearch(target, config, templateData, params, result);
   renderEnding(target, templateData);
+};
+
+export const render404Page = (
+  target: Writable,
+  config: SearchConfig,
+  templateData: MdnSearchTemplate,
+  path: string,
+  result?: SearchResponse<MdnIndexData>
+): void => {
+  target.push(templateData.headHtmlBeforeTitle);
+  target.push(config.text.notFound);
+  target.push('</title>\
+<meta name="viewport" content="width=device-width, initial-scale=1">\
+<meta name="robots" content="noindex, nofollow">');
+
+  /// region header css
+  // note that path of 404 pages can vary from pages
+  // so it is hard to make a pre-rendered head
+  const extraDepth = countChar(path, '/') - (path[0] === '/' ? 2 : 1);
+  const extraPath = '../'.repeat(extraDepth);
+  for (let i = 0, a = templateData.styleSheetUrls, l = a.length; i < l; i++) {
+    // we trust templateData, no escape here
+    target.push(`<link href="${extraPath}${a[i]}" rel="stylesheet" type="text/css">`);
+  }
+  if (templateData.icon) {
+    target.push(`<link href="${extraPath}${templateData.icon}" rel="shortcut icon">`);
+  }
+  /// endregion header css
+  target.push('</head><body class="not-found-page">');
+  target.push(config.notFoundHtml);
+
+  // search for alternative page
+  if (result?.hits?.total?.value) {
+    const {hits} = result.hits;
+    if (hits?.length) {
+      target.push('<main role="alternative">' +
+        '<div class="center clear">' +
+        '<section id="content"><ul>');
+      target.push('<li>');
+      target.push(config.text.notFoundFallback);
+      target.push('</li>');
+      for (let i = 0; i < hits.length; i++) {
+        target.push('<li>');
+        target.push('<a href="');
+        target.push(extraPath);
+        target.push('../');
+        target.push(hits[i]._id);
+        target.push('">');
+        if (hits[i]._source?.title) {
+          target.push(hits[i]._source.title);
+        } else {
+          target.push(hits[i]._id);
+        }
+        target.push('</a></li>');
+      }
+      target.push('</ul></section></main>');
+    }
+  }
+
+  target.push('</body></html>');
 };

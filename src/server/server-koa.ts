@@ -2,12 +2,13 @@ import {Client} from '@elastic/elasticsearch';
 import Koa = require('koa');
 import koaStatic = require('koa-static');
 import {initTemplate} from './init-template';
-import {renderPage} from './render-page';
+import {render404Page, renderPage} from './render-page';
 // noinspection ES6PreferShortImport
 import {ElasticSearchClient, SearchConfig} from '../config/types';
 import {MdnSearchTemplate, SearchParams} from './types';
 import {search} from './search';
 import {StringBuffer} from '../utils';
+import {search404Fallback} from './search-404-fallback';
 
 export const searchServer = (
   config: SearchConfig,
@@ -39,6 +40,12 @@ export const searchServer = (
       page = 1;
     }
   }
+  if (config.maxPageNumber && page > config.maxPageNumber) {
+    ctx.redirect(`/${config.locale}/search?q=${
+      params.searchString
+    }&page=${config.maxPageNumber}`);
+    return;
+  }
   params.page = page;
   params.pageOffset = (page - 1) * config.pageSize || 0;
   ctx.type = 'html';
@@ -64,6 +71,23 @@ export default async function (config: SearchConfig): Promise<Koa> {
       '/index.html'
     ]
   }));
+
+  // handle 404 not found
+  app.use(async (ctx, next) => {
+    await next();
+    if (ctx.status === 404 && !ctx.body) {
+      const sb = new StringBuffer();
+      if (ctx.path.startsWith('/@api') ||
+        ctx.path.startsWith('/files')) {
+        render404Page(sb, config, t, ctx.path);
+      } else {
+        const searchResult = await search404Fallback(client, config, ctx.path);
+        render404Page(sb, config, t, ctx.path, searchResult);
+      }
+      ctx.type = 'html';
+      ctx.body = sb.toBuffer();
+    }
+  });
 
   app.listen(config.port, () =>
     console.log('server started on port', config.port));

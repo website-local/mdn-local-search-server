@@ -1,30 +1,26 @@
 import {Client} from '@elastic/elasticsearch';
-import {SearchParams, SearchResponse} from './types';
+import {SearchResponse} from './types';
 // noinspection ES6PreferShortImport
 import {MdnIndexData} from '../build-index/types';
 import {SearchBody} from 'elastic-ts';
 // noinspection ES6PreferShortImport
 import {SearchConfig} from '../config/types';
 
-export const search = async (
+export const search404Fallback = async (
   client: Client,
   config: SearchConfig,
-  params: SearchParams
+  path: string
 ): Promise<SearchResponse<MdnIndexData>> => {
+  const query = path[0] === '/' ? path.slice(1) : path;
   const body: SearchBody = {
     _source: {
-      excludes: ['content', 'summary', 'breadcrumb', 'url', 'url_keyword']
-    },
-    highlight: {
-      fields: {
-        content: {},
-        summary: {}
-      }
+      excludes: ['content', 'summary', 'breadcrumb', 'time', 'url', 'url_keyword']
     },
     query: {
-      simple_query_string: {
-        query: params.searchString,
-        fields: ['title^5', 'breadcrumb', 'summary', 'content'],
+      match: {
+        url: {
+          query
+        }
       }
     }
   };
@@ -34,12 +30,11 @@ export const search = async (
     const result = await client.search<SearchResponse<MdnIndexData>>({
       index: config.esIndex,
       size: config.pageSize,
-      from: params.pageOffset,
       body
     }, {
       ignore: [404],
-      maxRetries: 3,
-      requestTimeout: config.searchTimeout
+      maxRetries: 1,
+      requestTimeout: config.notFoundSearchTimeout || config.searchTimeout
     });
 
     return result.body;

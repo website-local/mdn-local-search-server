@@ -1,7 +1,7 @@
 import {Client, ClientOptions} from '@elastic/elasticsearch';
 
 export type ElasticSearchClient = Client;
-// search: move out to standalone repo
+
 export interface SearchConfig {
   port: number;
   rootDir: string;
@@ -15,8 +15,9 @@ export interface SearchConfig {
   elasticsearch: ClientOptions;
   maxSearchStringLength: number;
   pageSize: number;
+  maxPageNumber?: number;
   workersForBuildingIndex?: number;
-  requestTimeout?: number;
+  searchTimeout?: number;
   text: {
     beforeTitle: string;
     afterTitle: string;
@@ -28,8 +29,11 @@ export interface SearchConfig {
     closeSearch: string;
     noResult: string;
     meta: string[];
+    notFound: string;
+    notFoundFallback: string;
   };
   notFoundHtml: string;
+  notFoundSearchTimeout?: number;
 
   esIndexSetting?: Record<string, unknown>;
   esIndexMapping?: Record<string, unknown>;

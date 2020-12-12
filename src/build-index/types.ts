@@ -14,10 +14,16 @@ export type BuildIndexWorkerMessage =
 
 
 export interface MdnIndexData {
-  title: string,
-  time?: string,
-  breadcrumb: string,
-  content?: string,
-  summary: string
+  title: string;
+  time?: string;
+  breadcrumb: string;
+  content?: string;
+  summary: string;
+  url: string;
+
+  /**
+   * The lowercase url
+   */
+  url_keyword: string;
 }
 

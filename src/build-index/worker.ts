@@ -47,7 +47,9 @@ const processEntry = async () => {
           content: escapeHtml(content)
             .replace(/\s{2,}/g, ' '),
           summary: escapeHtml(summary)
-            .replace(/\s{2,}/g, ' ')
+            .replace(/\s{2,}/g, ' '),
+          url: entry,
+          url_keyword: entry.toLowerCase()
         }
       });
     } catch (e) {

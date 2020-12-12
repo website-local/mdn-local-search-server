@@ -8,7 +8,8 @@ const defaultConfig: Partial<SearchConfig> = {
   logPath: process.cwd(),
   maxSearchStringLength: 63,
   pageSize: 10,
-  workersForBuildingIndex: 3,
+  maxPageNumber: 200,
+  searchTimeout: 200,
   text: {
     beforeTitle: '搜索结果：“',
     afterTitle: '” | MDN',
@@ -28,7 +29,10 @@ const defaultConfig: Partial<SearchConfig> = {
       ' 至 ',
       '。'
     ],
+    notFound: '找不到页面 ',
+    notFoundFallback: '可能类似的页面: ',
   },
+  notFoundSearchTimeout: 100,
   notFoundHtml: '<main id="content" role="main">' +
     '<div class="center clear">' +
     '<section id="content">' +
@@ -36,6 +40,7 @@ const defaultConfig: Partial<SearchConfig> = {
     '  <section id="content-main" class="full" role="main">' +
     '    <h1>找不到页面</h1>' +
     '    <p>很抱歉，我们找不到您要找的东西。</p>' +
+    '    <p><button onclick="history.back()">返回</button></p>' +
     '  </section>' +
     '</div>' +
     '</section>' +
@@ -110,6 +115,14 @@ const defaultConfig: Partial<SearchConfig> = {
         type: 'text',
         analyzer: 'kuma_analyzer',
         search_analyzer: 'kuma_analyzer'
+      },
+      url: {
+        type: 'text',
+        analyzer: 'kuma_analyzer',
+        search_analyzer: 'kuma_analyzer'
+      },
+      url_keyword: {
+        type: 'keyword'
       }
     }
   }

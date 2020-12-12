@@ -28,6 +28,9 @@ export class StringBuffer implements Writable {
   }
 
   append(str: string): this {
+    if (!str || !str.length) {
+      return this;
+    }
     const byteLength = Buffer.byteLength(str);
     this.writeString(str, byteLength);
     return this;
@@ -57,3 +60,15 @@ export class StringBuffer implements Writable {
     return this.buffer.subarray(0, this.size);
   }
 }
+
+export const countChar = (str: string, char: string): number => {
+  const charCode = char.charCodeAt(0);
+  let count = 0;
+  for (let i = 0, l = str.length, c = -1; i < l; i++) {
+    c = str.charCodeAt(i);
+    if (c === charCode) {
+      count++;
+    }
+  }
+  return count;
+};

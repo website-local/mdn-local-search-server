@@ -100,7 +100,7 @@ export const buildIndex = async (config: SearchConfig): Promise<void> => {
     }
     let w;
     for (let i = 0; i < c; i++) {
-      workers.push(w = new Worker(join(__dirname, 'build-index-worker.js'), {
+      workers.push(w = new Worker(join(__dirname, 'worker.js'), {
         workerData: config
       }));
       w.on('message', (msg: BuildIndexWorkerMessage) => {

@@ -9,13 +9,16 @@ import {MdnSearchTemplate, SearchParams} from './types';
 import {search} from './search';
 import {StringBuffer} from '../utils';
 import {search404Fallback} from './search-404-fallback';
+import {searchForCaseRedirect} from './search-for-case-redirect';
 
 export const koaSearchServer = (
   config: SearchConfig,
   client: ElasticSearchClient,
   template: MdnSearchTemplate
 ): Koa.Middleware => async (ctx, next) => {
-  if (ctx.path !== '/search' && ctx.path !== `/${config.locale}/search`) {
+  if (ctx.path !== '/search' &&
+    // search ignore case
+    ctx.path.toLowerCase() !== `/${config.locale.toLowerCase()}/search`) {
     if (ctx.path === '/static/build/styles/inject.css') {
       ctx.body = template.injectCss;
       ctx.set('Cache-Control', 'max-age=43200');
@@ -75,6 +78,22 @@ export const koaUserFriendly404Page = (
   }
 };
 
+export const koaCaseRedirect = (
+  config: SearchConfig,
+  t: MdnSearchTemplate,
+  client: Client
+): Koa.Middleware => async (ctx, next) => {
+  await next();
+  if (ctx.status === 404 && !ctx.body &&
+    !(ctx.path.startsWith('/@api') ||
+      ctx.path.startsWith('/files'))) {
+    const searchResult = await searchForCaseRedirect(client, config, ctx.path);
+    if (searchResult) {
+      ctx.redirect('/' + searchResult);
+    }
+  }
+};
+
 export async function koaServer(config: SearchConfig): Promise<Koa> {
   const app = new Koa();
   const client = new Client(config.elasticsearch);
@@ -95,6 +114,10 @@ export async function koaServer(config: SearchConfig): Promise<Koa> {
   if (config.enableUserFriendly404Page) {
     // handle 404 not found
     app.use(koaUserFriendly404Page(config, t, client));
+  }
+
+  if (config.redirectCaseMismatchStaticContent) {
+    app.use(koaCaseRedirect(config, t, client));
   }
 
   app.listen(config.port, () =>

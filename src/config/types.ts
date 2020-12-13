@@ -36,6 +36,14 @@ export interface SearchConfig {
   notFoundHtml: string;
   notFoundSearchTimeout?: number;
 
+  /**
+   * Redirect pages with only case differ than static content.
+   * https://github.com/website-local/mdn-local-search-server/issues/3
+   * @default false for windows, true for any other platform
+   */
+  redirectCaseMismatchStaticContent?: boolean;
+  redirectCaseMismatchSearchTimeout?: number;
+
   esIndexSetting?: Record<string, unknown>;
   esIndexMapping?: Record<string, unknown>;
 }

@@ -146,6 +146,9 @@ export const resolveConfig = (config: Partial<SearchConfig>): SearchConfig => {
   if (!('enableUserFriendly404Page' in config)) {
     config.enableUserFriendly404Page = true;
   }
+  if (!('redirectCaseMismatchStaticContent' in config)) {
+    config.redirectCaseMismatchStaticContent = process.platform !== 'win32';
+  }
   return Object.assign({}, defaultConfig, config) as SearchConfig;
 };
 

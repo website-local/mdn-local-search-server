@@ -1,5 +1,4 @@
 import {Client, ClientOptions} from '@elastic/elasticsearch';
-import {userFriendly404Page} from '..';
 
 export type ElasticSearchClient = Client;
 

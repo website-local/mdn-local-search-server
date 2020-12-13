@@ -10,7 +10,7 @@ import {search} from './search';
 import {StringBuffer} from '../utils';
 import {search404Fallback} from './search-404-fallback';
 
-export const searchServer = (
+export const koaSearchServer = (
   config: SearchConfig,
   client: ElasticSearchClient,
   template: MdnSearchTemplate
@@ -55,7 +55,7 @@ export const searchServer = (
   ctx.body = buffer.toBuffer();
 };
 
-export const userFriendly404Page = (
+export const koaUserFriendly404Page = (
   config: SearchConfig,
   t: MdnSearchTemplate,
   client: Client
@@ -75,12 +75,12 @@ export const userFriendly404Page = (
   }
 };
 
-export default async function (config: SearchConfig): Promise<Koa> {
+export async function koaServer(config: SearchConfig): Promise<Koa> {
   const app = new Koa();
   const client = new Client(config.elasticsearch);
   const t = await initTemplate(config);
 
-  app.use(searchServer(config, client, t));
+  app.use(koaSearchServer(config, client, t));
 
   app.use(koaStatic(config.rootDir, {
     maxAge: 43200000,
@@ -94,7 +94,7 @@ export default async function (config: SearchConfig): Promise<Koa> {
 
   if (config.enableUserFriendly404Page) {
     // handle 404 not found
-    app.use(userFriendly404Page(config, t, client));
+    app.use(koaUserFriendly404Page(config, t, client));
   }
 
   app.listen(config.port, () =>

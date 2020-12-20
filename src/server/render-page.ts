@@ -169,13 +169,31 @@ export const render404Page = (
   // note that path of 404 pages can vary from pages
   // so it is hard to make a pre-rendered head
   const extraDepth = countChar(path, '/') - (path[0] === '/' ? 2 : 1);
-  const extraPath = '../'.repeat(extraDepth);
-  for (let i = 0, a = templateData.styleSheetUrls, l = a.length; i < l; i++) {
-    // we trust templateData, no escape here
-    target.push(`<link href="${extraPath}${a[i]}" rel="stylesheet" type="text/css">`);
-  }
-  if (templateData.icon) {
-    target.push(`<link href="${extraPath}${templateData.icon}" rel="shortcut icon">`);
+  const extraPath = extraDepth <= 0 ? '' : '../'.repeat(extraDepth);
+  if (extraDepth >= 0) {
+    for (let i = 0, a = templateData.styleSheetUrls, l = a.length; i < l; i++) {
+      // we trust templateData, no escape here
+      target.push(`<link href="${extraPath}${
+        a[i]
+      }" rel="stylesheet" type="text/css">`);
+    }
+    if (templateData.icon) {
+      target.push(`<link href="${extraPath}${
+        templateData.icon
+      }" rel="shortcut icon">`);
+    }
+  } else {
+    for (let i = 0, a = templateData.styleSheetUrls, l = a.length; i < l; i++) {
+      // we trust templateData, no escape here
+      target.push(`<link href="${
+        a[i].slice(3)
+      }" rel="stylesheet" type="text/css">`);
+    }
+    if (templateData.icon) {
+      target.push(`<link href="${
+        templateData.icon.slice(3)
+      }" rel="shortcut icon">`);
+    }
   }
   /// endregion header css
   target.push('</head><body class="not-found-page">');
@@ -194,8 +212,10 @@ export const render404Page = (
       for (let i = 0; i < hits.length; i++) {
         target.push('<li>');
         target.push('<a href="');
-        target.push(extraPath);
-        target.push('../');
+        if (extraDepth >= 0) {
+          target.push(extraPath);
+          target.push('../');
+        }
         target.push(hits[i]._id);
         target.push('">');
         if (hits[i]._source?.title) {
